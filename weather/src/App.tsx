@@ -11,6 +11,13 @@ interface WeatherState {
   city: string
   loading: boolean
   error: string | null
+  forecast: DailyForecast[]
+}
+
+interface DailyForecast {
+  date: string
+  minimum: number
+  maximum: number
 }
 
 const defaultCity = 'Lagos'
@@ -62,7 +69,7 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
   }
 
   const weatherResponse = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day&timezone=auto`,
+    `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&forecast_days=4&timezone=auto`,
   )
 
   if (!weatherResponse.ok) {
@@ -78,6 +85,18 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
   }
 
   const weatherCode = current.weather_code
+  const daily = weatherData.daily
+  const forecast: DailyForecast[] = daily?.time?.slice(1, 4).map(
+    (date: string, index: number) => ({
+      date,
+      minimum: daily.temperature_2m_min[index],
+      maximum: daily.temperature_2m_max[index],
+    }),
+  ) ?? []
+
+  if (forecast.length !== 3 || forecast.some((day) => day.minimum == null || day.maximum == null)) {
+    throw new Error('Three-day forecast data was not returned.')
+  }
 
   return {
     temperature,
@@ -96,6 +115,7 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
     city: location.name,
     loading: false,
     error: null,
+    forecast,
   }
 }
 
@@ -112,6 +132,7 @@ function App() {
     city: defaultCity,
     loading: true,
     error: null,
+    forecast: [],
   })
 
   useEffect(() => {
@@ -146,6 +167,7 @@ function App() {
         city: defaultCity,
         loading: false,
         error: 'Please enter a city name.',
+        forecast: [],
       })
       return
     }
@@ -161,6 +183,7 @@ function App() {
       city: trimmedQuery,
       loading: true,
       error: null,
+      forecast: [],
     })
 
     try {
@@ -178,6 +201,7 @@ function App() {
         city: trimmedQuery,
         loading: false,
         error: error instanceof Error ? error.message : 'Something went wrong.',
+        forecast: [],
       })
     }
   }
@@ -194,7 +218,7 @@ function App() {
     >
       <section
         style={{
-          width: 'min(90vw, 440px)',
+          width: 'min(94vw, 640px)',
           background: '#ffffff',
           borderRadius: '20px',
           boxShadow: '0 24px 60px rgba(15, 23, 42, 0.12)',
@@ -301,6 +325,58 @@ function App() {
                 </dd>
               </div>
             </dl>
+            <section
+              aria-label="Three-day temperature forecast"
+              style={{ marginTop: '1.75rem', textAlign: 'left' }}
+            >
+              <h2 style={{ margin: '0 0 0.75rem', color: '#0f172a', fontSize: '1.1rem' }}>
+                Next 3 days
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
+                {weather.forecast.map((day) => (
+                  <div
+                    key={day.date}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.65rem',
+                      minHeight: '120px',
+                      padding: '1rem 0.6rem',
+                      background: '#f8fafc',
+                      borderRadius: '10px',
+                      color: '#475569',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span style={{ fontWeight: 600 }}>
+                      {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, {
+                        weekday: 'short',
+                      })}
+                    </span>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        color: '#0f172a',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <span aria-label={`Low ${day.minimum} degrees Celsius`} style={{ whiteSpace: 'nowrap' }}>
+                        ↓ {day.minimum}°
+                      </span>
+                      <span aria-label={`High ${day.maximum} degrees Celsius`} style={{ whiteSpace: 'nowrap' }}>
+                        ↑ {day.maximum}°
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </>
         )}
       </section>
