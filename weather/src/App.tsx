@@ -1,13 +1,49 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface WeatherState {
   temperature: number | null
+  feelsLike: number | null
+  humidity: number | null
+  windSpeed: number | null
+  precipitation: number | null
+  condition: string | null
+  symbol: string | null
   city: string
   loading: boolean
   error: string | null
 }
 
 const defaultCity = 'Lagos'
+
+function getWeatherDescription(code: number, isDay: number): string {
+  if (code === 0) return isDay ? 'Clear sky' : 'Clear night'
+  if (code === 1) return isDay ? 'Mainly clear' : 'Mostly clear'
+  if (code === 2) return 'Partly cloudy'
+  if (code === 3) return 'Overcast'
+  if (code === 45 || code === 48) return 'Foggy'
+  if (code >= 51 && code <= 57) return 'Drizzle'
+  if (code >= 61 && code <= 67) return 'Rain'
+  if (code >= 71 && code <= 77) return 'Snow'
+  if (code >= 80 && code <= 82) return 'Rain showers'
+  if (code === 85 || code === 86) return 'Snow showers'
+  if (code === 95 || code === 96 || code === 99) return 'Thunderstorm'
+  return 'Conditions unavailable'
+}
+
+function getWeatherSymbol(code: number, isDay: number): string {
+  if (code === 0) return isDay ? '☀️' : '🌙'
+  if (code === 1) return isDay ? '🌤️' : '🌙'
+  if (code === 2) return '⛅'
+  if (code === 3) return '☁️'
+  if (code === 45 || code === 48) return '🌫️'
+  if (code >= 51 && code <= 57) return '🌦️'
+  if (code >= 61 && code <= 67) return '🌧️'
+  if (code >= 71 && code <= 77) return '❄️'
+  if (code >= 80 && code <= 82) return '🌦️'
+  if (code === 85 || code === 86) return '🌨️'
+  if (code === 95 || code === 96 || code === 99) return '⛈️'
+  return '🌡️'
+}
 
 async function fetchWeatherForCity(city: string): Promise<WeatherState> {
   const geocodeResponse = await fetch(
@@ -26,7 +62,7 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
   }
 
   const weatherResponse = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m&timezone=auto`,
+    `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day&timezone=auto`,
   )
 
   if (!weatherResponse.ok) {
@@ -34,14 +70,29 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
   }
 
   const weatherData = await weatherResponse.json()
-  const temperature = weatherData.current?.temperature_2m
+  const current = weatherData.current
+  const temperature = current?.temperature_2m
 
   if (temperature === undefined || temperature === null) {
     throw new Error('Temperature data was not returned.')
   }
 
+  const weatherCode = current.weather_code
+
   return {
     temperature,
+    feelsLike: current.apparent_temperature ?? null,
+    humidity: current.relative_humidity_2m ?? null,
+    windSpeed: current.wind_speed_10m ?? null,
+    precipitation: current.precipitation ?? null,
+    condition:
+      typeof weatherCode === 'number'
+        ? getWeatherDescription(weatherCode, current.is_day ?? 1)
+        : 'Conditions unavailable',
+    symbol:
+      typeof weatherCode === 'number'
+        ? getWeatherSymbol(weatherCode, current.is_day ?? 1)
+        : '🌡️',
     city: location.name,
     loading: false,
     error: null,
@@ -52,10 +103,32 @@ function App() {
   const [query, setQuery] = useState(defaultCity)
   const [weather, setWeather] = useState<WeatherState>({
     temperature: null,
+    feelsLike: null,
+    humidity: null,
+    windSpeed: null,
+    precipitation: null,
+    condition: null,
+    symbol: null,
     city: defaultCity,
     loading: true,
     error: null,
   })
+
+  useEffect(() => {
+    const loadDefaultWeather = async () => {
+      try {
+        setWeather(await fetchWeatherForCity(defaultCity))
+      } catch (error) {
+        setWeather((current) => ({
+          ...current,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Something went wrong.',
+        }))
+      }
+    }
+
+    loadDefaultWeather()
+  }, [])
 
   const handleSearch = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -64,6 +137,12 @@ function App() {
     if (!trimmedQuery) {
       setWeather({
         temperature: null,
+        feelsLike: null,
+        humidity: null,
+        windSpeed: null,
+        precipitation: null,
+        condition: null,
+        symbol: null,
         city: defaultCity,
         loading: false,
         error: 'Please enter a city name.',
@@ -73,6 +152,12 @@ function App() {
 
     setWeather({
       temperature: null,
+      feelsLike: null,
+      humidity: null,
+      windSpeed: null,
+      precipitation: null,
+      condition: null,
+      symbol: null,
       city: trimmedQuery,
       loading: true,
       error: null,
@@ -84,6 +169,12 @@ function App() {
     } catch (error) {
       setWeather({
         temperature: null,
+        feelsLike: null,
+        humidity: null,
+        windSpeed: null,
+        precipitation: null,
+        condition: null,
+        symbol: null,
         city: trimmedQuery,
         loading: false,
         error: error instanceof Error ? error.message : 'Something went wrong.',
@@ -162,9 +253,55 @@ function App() {
         ) : weather.error ? (
           <p style={{ margin: 0, color: '#b91c1c', fontSize: '1.1rem' }}>{weather.error}</p>
         ) : (
-          <p style={{ margin: 0, color: '#0f172a', fontSize: '3rem', fontWeight: 700 }}>
-            {weather.temperature}°C
-          </p>
+          <>
+            <p
+              aria-label={weather.condition ?? 'Current weather condition'}
+              style={{ margin: 0, color: '#2563eb', fontSize: '1.3rem', fontWeight: 600 }}
+            >
+              <span aria-hidden="true" style={{ marginRight: '0.5rem', fontSize: '1.8rem' }}>
+                {weather.symbol}
+              </span>
+              {weather.condition}
+            </p>
+            <p style={{ margin: '0.25rem 0 1.25rem', color: '#0f172a', fontSize: '3rem', fontWeight: 700 }}>
+              {weather.temperature}°C
+            </p>
+            <dl
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.75rem',
+                margin: 0,
+                color: '#475569',
+                fontSize: '0.95rem',
+              }}
+            >
+              <div>
+                <dt><span aria-hidden="true">🌡️ </span>Feels like</dt>
+                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                  {weather.feelsLike === null ? '—' : `${weather.feelsLike}°C`}
+                </dd>
+              </div>
+              <div>
+                <dt><span aria-hidden="true">💧 </span>Humidity</dt>
+                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                  {weather.humidity === null ? '—' : `${weather.humidity}%`}
+                </dd>
+              </div>
+              <div>
+                <dt><span aria-hidden="true">💨 </span>Wind</dt>
+                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                  {weather.windSpeed === null ? '—' : `${weather.windSpeed} km/h`}
+                </dd>
+              </div>
+              <div>
+                <dt><span aria-hidden="true">🌧️ </span>Precipitation</dt>
+                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                  {weather.precipitation === null ? '—' : `${weather.precipitation} mm`}
+                </dd>
+              </div>
+            </dl>
+          </>
         )}
       </section>
     </main>
