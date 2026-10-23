@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import './App.css'
 
 interface WeatherState {
   temperature: number | null
@@ -244,70 +245,28 @@ function App() {
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        background: '#f3f4f6',
-        fontFamily: 'system-ui, sans-serif',
-      }}
-    >
-      <section
-        style={{
-          width: 'min(94vw, 640px)',
-          background: '#ffffff',
-          borderRadius: '20px',
-          boxShadow: '0 24px 60px rgba(15, 23, 42, 0.12)',
-          padding: '2rem 2.5rem',
-          textAlign: 'center',
-        }}
-      >
+    <main className="app-shell">
+      <section className="weather-card">
         <p
-          style={{
-            margin: 0,
-            color: '#64748b',
-            textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-            fontSize: '0.8rem',
-          }}
+          className="eyebrow"
         >
           Current weather
         </p>
 
-        <form onSubmit={handleSearch} style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+        <form onSubmit={handleSearch} className="weather-search">
           <input
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search city"
-            style={{
-              flex: 1,
-              padding: '0.8rem 1rem',
-              borderRadius: '10px',
-              border: '1px solid #cbd5e1',
-              fontSize: '1rem',
-            }}
+            className="search-input"
           />
-          <button
-            type="submit"
-            style={{
-              padding: '0.8rem 1.1rem',
-              border: 'none',
-              borderRadius: '10px',
-              background: '#2563eb',
-              color: '#ffffff',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
+          <button type="submit" className="search-button">
             Search
           </button>
         </form>
 
-        <h1 style={{ margin: '1.5rem 0 1rem', color: '#0f172a', fontSize: '2.2rem' }}>
-          {weather.city}
-        </h1>
+        <h1 className="city-name">{weather.city}</h1>
 
         {weather.loading ? (
           <p style={{ margin: 0, color: '#475569', fontSize: '1.1rem' }}>Loading...</p>
@@ -323,92 +282,58 @@ function App() {
           <>
             <p
               aria-label={weather.condition ?? 'Current weather condition'}
-              style={{ margin: 0, color: '#2563eb', fontSize: '1.3rem', fontWeight: 600 }}
+              className="weather-condition"
             >
-              <span aria-hidden="true" style={{ marginRight: '0.5rem', fontSize: '1.8rem' }}>
+              <span aria-hidden="true" className="weather-symbol">
                 {weather.symbol}
               </span>
               {weather.condition}
             </p>
-            <p style={{ margin: '0.25rem 0 1.25rem', color: '#0f172a', fontSize: '3rem', fontWeight: 700 }}>
+            <p className="temperature">
               {weather.temperature}°C
             </p>
-            <dl
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.75rem',
-                margin: 0,
-                color: '#475569',
-                fontSize: '0.95rem',
-              }}
-            >
+            <dl className="weather-details">
               <div>
                 <dt><span aria-hidden="true">🌡️ </span>Feels like</dt>
-                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                <dd>
                   {weather.feelsLike === null ? '—' : `${weather.feelsLike}°C`}
                 </dd>
               </div>
               <div>
                 <dt><span aria-hidden="true">💧 </span>Humidity</dt>
-                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                <dd>
                   {weather.humidity === null ? '—' : `${weather.humidity}%`}
                 </dd>
               </div>
               <div>
                 <dt><span aria-hidden="true">💨 </span>Wind</dt>
-                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                <dd>
                   {weather.windSpeed === null ? '—' : `${weather.windSpeed} km/h`}
                 </dd>
               </div>
               <div>
                 <dt><span aria-hidden="true">🌧️ </span>Precipitation</dt>
-                <dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>
+                <dd>
                   {weather.precipitation === null ? '—' : `${weather.precipitation} mm`}
                 </dd>
               </div>
             </dl>
             <section
               aria-label="Three-day temperature forecast"
-              style={{ marginTop: '1.75rem', textAlign: 'left' }}
+              className="forecast-section"
             >
-              <h2 style={{ margin: '0 0 0.75rem', color: '#0f172a', fontSize: '1.1rem' }}>
+              <h2 className="forecast-title">
                 Next 3 days
               </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
+              <div className="forecast-grid">
                 {weather.forecast.map((day) => (
-                  <div
-                    key={day.date}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.65rem',
-                      minHeight: '120px',
-                      padding: '1rem 0.6rem',
-                      background: '#f8fafc',
-                      borderRadius: '10px',
-                      color: '#475569',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
+                  <div key={day.date} className="forecast-day">
+                    <span className="forecast-weekday">
                       {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, {
                         weekday: 'short',
                       })}
                     </span>
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        color: '#0f172a',
-                        fontSize: '0.9rem',
-                        fontWeight: 600,
-                      }}
-                    >
+                    <div className="forecast-temperatures">
                       <span aria-label={`Low ${day.minimum} degrees Celsius`} style={{ whiteSpace: 'nowrap' }}>
                         ↓ {day.minimum}°
                       </span>
