@@ -11,6 +11,7 @@ interface WeatherState {
   city: string
   loading: boolean
   error: string | null
+  cityNotFound: boolean
   forecast: DailyForecast[]
 }
 
@@ -52,7 +53,7 @@ function getWeatherSymbol(code: number, isDay: number): string {
   return '🌡️'
 }
 
-async function fetchWeatherForCity(city: string): Promise<WeatherState> {
+async function fetchWeatherForCity(city: string): Promise<WeatherState | null> {
   const geocodeResponse = await fetch(
     `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
   )
@@ -65,7 +66,7 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
   const location = geocodeData.results?.[0]
 
   if (!location) {
-    throw new Error('City not found.')
+    return null
   }
 
   const weatherResponse = await fetch(
@@ -115,6 +116,7 @@ async function fetchWeatherForCity(city: string): Promise<WeatherState> {
     city: location.name,
     loading: false,
     error: null,
+    cityNotFound: false,
     forecast,
   }
 }
@@ -132,13 +134,30 @@ function App() {
     city: defaultCity,
     loading: true,
     error: null,
+    cityNotFound: false,
     forecast: [],
   })
 
   useEffect(() => {
     const loadDefaultWeather = async () => {
       try {
-        setWeather(await fetchWeatherForCity(defaultCity))
+        const result = await fetchWeatherForCity(defaultCity)
+        setWeather(
+          result ?? {
+            temperature: null,
+            feelsLike: null,
+            humidity: null,
+            windSpeed: null,
+            precipitation: null,
+            condition: null,
+            symbol: null,
+            city: defaultCity,
+            loading: false,
+            error: null,
+            cityNotFound: true,
+            forecast: [],
+          },
+        )
       } catch (error) {
         setWeather((current) => ({
           ...current,
@@ -167,6 +186,7 @@ function App() {
         city: defaultCity,
         loading: false,
         error: 'Please enter a city name.',
+        cityNotFound: false,
         forecast: [],
       })
       return
@@ -183,12 +203,28 @@ function App() {
       city: trimmedQuery,
       loading: true,
       error: null,
+      cityNotFound: false,
       forecast: [],
     })
 
     try {
       const result = await fetchWeatherForCity(trimmedQuery)
-      setWeather(result)
+      setWeather(
+        result ?? {
+          temperature: null,
+          feelsLike: null,
+          humidity: null,
+          windSpeed: null,
+          precipitation: null,
+          condition: null,
+          symbol: null,
+          city: trimmedQuery,
+          loading: false,
+          error: null,
+          cityNotFound: true,
+          forecast: [],
+        },
+      )
     } catch (error) {
       setWeather({
         temperature: null,
@@ -201,6 +237,7 @@ function App() {
         city: trimmedQuery,
         loading: false,
         error: error instanceof Error ? error.message : 'Something went wrong.',
+        cityNotFound: false,
         forecast: [],
       })
     }
@@ -274,8 +311,14 @@ function App() {
 
         {weather.loading ? (
           <p style={{ margin: 0, color: '#475569', fontSize: '1.1rem' }}>Loading...</p>
+        ) : weather.cityNotFound ? (
+          <p role="status" style={{ margin: 0, color: '#475569', fontSize: '1.1rem' }}>
+            We couldn’t find “{weather.city}”. Check the spelling or try another city.
+          </p>
         ) : weather.error ? (
-          <p style={{ margin: 0, color: '#b91c1c', fontSize: '1.1rem' }}>{weather.error}</p>
+          <p role="alert" style={{ margin: 0, color: '#b91c1c', fontSize: '1.1rem' }}>
+            {weather.error}
+          </p>
         ) : (
           <>
             <p
